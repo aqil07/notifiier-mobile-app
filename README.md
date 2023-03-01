@@ -5,7 +5,8 @@ This is a react-native app, for Android where it gets the users location and wil
 
 
 //Note Android phone must be connected via USB.
-Clone the repo, 
-cd nto mobileApp
-npm run start
-npm run android
+<br/>
+- Clone the repo, 
+- cd nto mobileApp
+- npm run start
+- npm run android
