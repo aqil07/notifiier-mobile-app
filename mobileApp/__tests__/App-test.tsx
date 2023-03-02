@@ -12,6 +12,8 @@ import App from '../App';
 import renderer from 'react-test-renderer';
 import { NotifierForm } from '../components/contactForm.native';
 
+jest
+
 it('renders correctly', () => {
   const app = renderer.create(<NotifierForm />).toJSON();
   expect(app).toMatchSnapshot();

@@ -14,10 +14,12 @@ import {
     View,
     Alert,
     Image,
+    Linking,
+    AppState,
 } from 'react-native';
 
 // import 'react-native-geolocation-service' ;
-import { clearWatch, watchPosition } from 'react-native-geolocation-service';
+import Geolocation from 'react-native-geolocation-service';
 
 // const Geolocation = Geo
 const requestOptions = {
@@ -42,9 +44,12 @@ async function fetchData(url: string) {
 export const NotifierForm = () => {
 
     const [response, setResponse]: [any, any] = useState({});
-    const [userNumber, setNumber] = useState('');
+    // const [userNumber, setNumber] = useState('');
     const [getWatchId, setWatchId]: [any, any] = useState();
     // const [targetLocation, setTargetLocation] = useState('');
+
+    // console.log(AppState.currentState);
+
 
 
     type locationResponse =
@@ -56,7 +61,7 @@ export const NotifierForm = () => {
         latitude: 0, longitude: 0
     }
 
-    const [userLocate, gs_etUserLocation] = useReducer(function (state: any, dispatch: { type: any, userlocate?: any, userTarget?: any, destination?: any; }) {
+    const [userLocate, gs_etUserLocation] = useReducer(function (state: any, dispatch: { type: any, userlocate?: any, userTarget?: any, destination?: any, recipNumber?: string; }) {
         switch (dispatch.type) {
             case 'updateLocation': {
                 return {
@@ -69,13 +74,24 @@ export const NotifierForm = () => {
                     targetCoords: dispatch.destination
                 }
             }
+            case 'getNumber': {
+                // console.log(dispatch.recipNumber);
+
+                return {
+                    ...state, userContactNum: dispatch.recipNumber
+                }
+            }
+            default: { return { ...state } }
 
         }
     }, {
-        intialVal, userTargetLocateAddr: '', targetCoords: {}
+        intialVal, userTargetLocateAddr: '', targetCoords: {}, userContactNum: ''
     });
 
     //destructuring reducer response
+    const { userContactNum } = userLocate
+    console.log(userContactNum);
+
     const { targetCoords } = userLocate
     const { userTargetLocateAddr } = userLocate
     const { latitude, longitude } = userLocate.intialVal
@@ -109,8 +125,10 @@ export const NotifierForm = () => {
 
     async function watchUser() {
 
-        setWatchId(watchPosition(
+        setWatchId(Geolocation.watchPosition(
             async function success(d) {
+                // console.log(d.coords.latitude);
+
 
                 gs_etUserLocation({
                     type: 'updateLocation',
@@ -160,7 +178,8 @@ export const NotifierForm = () => {
 
     async function tracker() {
         if (latitude != 0 || longitude != 0) {
-            if (latitude?.toFixed(3) == targetCoords?.lat?.toFixed(3)) {
+            if (latitude?.toFixed(3) == targetCoords?.lat?.toFixed(3) &&
+                longitude?.toFixed(3) == targetCoords?.lon?.toFixed(3)) {
                 // console.log('Here');
 
                 return 'here'
@@ -186,20 +205,50 @@ export const NotifierForm = () => {
 
     }
 
+    //send message to recipient
+    function sendMessage() {
+        const url = 'whatsapp://send?text=Hello Test&phone=27603531651';
+        Linking.openURL(url).then((res) => {
+            console.log(res);
+
+        }).catch(() => {
+            Alert.alert('Install whatsapp to send messages')
+        })
+    }
+
     useEffect(() => {
 
-        getLocation()
+        const interval = setInterval(() => {
+            getLocation()
+        }, 36000)
 
         tracker().then((res) => {
             // console.log('r', longitude);
             if (res == 'here') {
-                Alert.alert("Hooray", "You have arrived")
+                Alert.alert("Hooray", "You have arrived", [
+                    {
+                        text: 'OK',
+                        style: 'default',
+                        onPress: () => {
+                            console.log('Sent');
+
+                            // sendMessage()
+                        }
+                    }
+                ])
             }
 
         })
 
+        // AppState.addEventListener('change', (nextAppState) => {
+        //     console.log(nextAppState);
+
+        // })
 
 
+        return () => {
+            clearInterval(interval);
+        }
 
     }, [latitude, longitude, targetCoords])
 
@@ -231,7 +280,7 @@ export const NotifierForm = () => {
 
         if (getWatchId !== null) {
 
-            clearWatch(getWatchId)
+            Geolocation.clearWatch(getWatchId)
 
 
 
@@ -247,9 +296,17 @@ export const NotifierForm = () => {
 
         <View>
             <Text>Notification Form</Text>
+            <TextInput  placeholderTextColor='blue' placeholder={'Your recipient number. Include country code'} style={{ marginTop: 20, backgroundColor: '#fff', color: '#111' }} accessibilityLabel='Your recipient to send the message to' onChangeText={(e: any) => {
+
+                gs_etUserLocation({
+                    type: 'getNumber',
+                    recipNumber: e
+                })
+            }}></TextInput>
+            {/* <Text>{userContactNum}</Text> */}
             <Text>{latitude}:{longitude}</Text>
             <Text>{response.properties?.formatted}</Text>
-            <Button onPress={getLocation} title='Click to get location'
+            <Button onPress={getLocation} title='Click to get/update location'
                 accessibilityLabel='Button to get your location'
                 color='#333' />
             <Text>{getWatchId != null ? `watching:${getWatchId}` : `not watching : ${getWatchId}`}</Text>
@@ -268,7 +325,7 @@ export const NotifierForm = () => {
                 }} />
             </View>
             <TextInput placeholderTextColor='blue' placeholder={'Your target Location'} style={{ marginTop: 20, backgroundColor: '#fff', color: '#111' }} accessibilityLabel='Target location address input' onChangeText={(e: any) => {
-                
+
                 gs_etUserLocation({
                     type: 'setTarget',
                     userTarget: e
